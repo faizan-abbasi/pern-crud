@@ -3,6 +3,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
 
 import productRoutes from "./routes/product.route.js";
 import { sql } from "./config/db.js";
@@ -10,15 +11,20 @@ import { aj } from "./lib/arcjet.js";
 
 // invoke
 dotenv.config();
-
 // Variables
 const PORT = process.env.PORT || 5001;
+// to keep track of directory we are in
+const __dirname = path.resolve();
 
 // middleware functions
 const app = express();
 app.use(express.json()); //this allows to parse the data into json
 app.use(cors()); // so will not face the cors errors in the client
-app.use(helmet()); //helmet is a security middleware that helps to protect app by setting various http headers
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+); //helmet is a security middleware that helps to protect app by setting various http headers
 app.use(morgan("dev")); //log the requests
 
 // apply arject rate-limit thorugh all routes
@@ -56,6 +62,15 @@ app.use(async (req, res, next) => {
 
 // endpoints
 app.use("/api/products", productRoutes);
+
+if (process.env.NODE_ENV === "production") {
+  // serve react app
+  app.use(express.static(path.join(__dirname, "/frontend/dist")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
+  });
+}
 
 // initilizing database
 async function initDB() {
